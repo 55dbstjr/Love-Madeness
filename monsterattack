@@ -1,0 +1,332 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Attack_Info
+{
+    public float make_Time;
+    public int direction;
+    public int position;
+}
+
+public class AttackMgr : MonoBehaviour
+{
+    public GameObject Monster_Obj;
+    private float Max_Delay = 0.3f; //레이저 딜레이 최대 랜덤값
+    private float time_Delay = 0;   //레이저 딜레이 랜덤 시간
+    private float laser_Time = 0;   //레이저 시간 계산 값
+    private float Game_Time = 0;    //게임 플레이 타임
+    
+    public int monster_Num = 3;   //한번에 나올 몬스터의 갯수
+    private List<Attack_Info> monster_List;
+    private List<Attack_Info> check_Monster = new List<Attack_Info>();
+    private GameObject Obj;
+
+    private int level;
+    private float min_Range, max_Range;
+    private int lazer_Num;
+
+    public Transform canvas;
+    public GameObject monster_Obj_List;
+    private void Start()
+    {
+        time_Delay = Random.Range(0.5f, Max_Delay);
+    }
+
+    private void Update()
+    {
+        if (this.GetComponent<InGameMgr>().isGameStart)
+        {
+            AttackLevel();
+        }
+    }
+
+    private void AttackLevel()
+    {
+        laser_Time += Time.deltaTime;
+        Game_Time += Time.deltaTime;
+
+        //시간별 난이도 설정
+        if (Game_Time < 10)
+            level = 1;
+        else if (Game_Time < 30)
+            level = 2;
+        else if (Game_Time < 80)
+            level = 3;
+        else if (Game_Time < 140)
+            level = 4;
+        else if (Game_Time < 210)
+            level = 5;
+        else if (Game_Time < 300)
+            level = 6;
+        else if (Game_Time < 360)
+            level = 7;
+        else
+            level = 8;
+
+        if (laser_Time > time_Delay)
+        {
+            laser_Time = 0;
+            LevelSeting(level);
+            time_Delay = Random.Range(min_Range, max_Range);
+            Make_Laser();
+        }
+
+        if (check_Monster.Count > 0)
+        {
+            for (int i = 0; i < check_Monster.Count; i++)
+                if (Game_Time - check_Monster[i].make_Time > 2.0f)
+                {
+                    check_Monster.RemoveAt(i);
+                    break;
+                }
+        }
+    }
+
+    private void Make_Laser()
+    {
+        bool trigger = false;
+        int i = 0;                                          //레이저 갯수 계산값
+        int monster_Dir = 0;                                //몬스터 방향
+        int monster_Pos = 0;                                //몬스터 타일 위치값
+        monster_List = new List<Attack_Info>();
+
+        while (true)
+        {
+            monster_Dir = Random.Range(0, 4);               //상하좌우 계산
+
+            monster_Pos = Random.Range(0, 5);
+            for (int j = 0; j < monster_List.Count; j++)
+            {
+                //몬스터가 같은 위치, 맞은편에서 나오지 않게 제외
+                if ((monster_List[j].direction == monster_Dir && monster_List[j].position == monster_Pos)
+                    || (monster_List[j].position == monster_Pos && monster_List[j].direction + monster_Dir == 1)
+                    || (monster_List[j].position == monster_Pos && monster_List[j].direction + monster_Dir == 5)
+                    || (check_Monster[j].direction == monster_Dir && check_Monster[j].position == monster_Pos))
+                    trigger = true;
+            }
+
+            if (trigger)
+            {
+                trigger = false;
+                continue;
+            }
+
+            Attack_Info monster_info = new Attack_Info();
+            monster_info.direction = monster_Dir;
+            monster_info.position = monster_Pos;
+            monster_info.make_Time = Game_Time;
+            monster_List.Add(monster_info);
+            check_Monster.Add(monster_info);
+
+            i++;
+            if (i >= lazer_Num)
+                break;
+        }
+        for (int j = 0; j < monster_List.Count; j++)
+        {
+            Make_Monster(monster_List[j]);
+        }
+;
+        monster_List.Clear();
+        StartCoroutine(Make_Laser_Sound());
+    }
+  
+    //몬스터가 나오는 방향, 위치 
+    private void Make_Monster(Attack_Info info)
+    {
+        float pos_X = 0;
+        float pos_Y = 0;
+
+        for (int i = 0; i < monster_Obj_List.transform.childCount; i++)
+            if (!monster_Obj_List.transform.GetChild(i).gameObject.activeSelf)
+            {
+                Obj = monster_Obj_List.transform.GetChild(i).gameObject;
+                Obj.SetActive(true);
+                Obj.GetComponent<MonsterMgr>().trigger = true;
+                Obj.transform.localScale = new Vector2(1, 1);
+                break;
+            }
+        if (info.direction == 0)         //상
+        {
+            Obj.GetComponent<Animator>().SetInteger("Monster_Dir", 1);
+            Obj.transform.GetChild(0).transform.localPosition = new Vector2(0, -532);
+            Obj.transform.GetChild(0).transform.rotation = Quaternion.Euler(0, 0, 270);
+            pos_Y = 328;
+            if (info.position == 0)
+                pos_X = -400;
+            else if (info.position == 1)
+                pos_X = -200;
+            else if (info.position == 2)
+                pos_X = 0;
+            else if (info.position == 3)
+                pos_X = 200;
+            else if (info.position == 4)
+                pos_X = 400;
+        }
+        else if (info.direction == 1)    //하
+        {
+            Obj.GetComponent<Animator>().SetInteger("Monster_Dir", 2);
+            Obj.transform.GetChild(0).transform.localPosition = new Vector2(0, 532);
+            Obj.transform.GetChild(0).transform.rotation = Quaternion.Euler(0, 0, 90);
+            pos_Y = -800;
+            if (info.position == 0)
+                pos_X = -400;
+            else if (info.position == 1)
+                pos_X = -200;
+            else if (info.position == 2)
+                pos_X = 0;
+            else if (info.position == 3)
+                pos_X = 200;
+            else if (info.position == 4)
+                pos_X = 400;
+        }
+        else if (info.direction == 2)    //좌
+        {
+            Obj.GetComponent<Animator>().SetInteger("Monster_Dir", 3);
+            Obj.transform.GetChild(0).transform.localPosition = new Vector2(532, 0);
+            Obj.transform.GetChild(0).transform.rotation = Quaternion.Euler(0, 0, 0);
+            pos_X = -570;
+            if (info.position == 0)
+                pos_Y = 170;
+            else if (info.position == 1)
+                pos_Y = -30;
+            else if (info.position == 2)
+                pos_Y = -230;
+            else if (info.position == 3)
+                pos_Y = -430;
+            else if (info.position == 4)
+                pos_Y = -630;
+        }
+        else if (info.direction == 3)    //우
+        {
+            Obj.transform.localScale = new Vector3(-1, 1, 1);
+            Obj.GetComponent<Animator>().SetInteger("Monster_Dir", 4);
+            Obj.transform.GetChild(0).transform.localPosition = new Vector2(532, 0);
+            Obj.transform.GetChild(0).transform.rotation = Quaternion.Euler(0, 0, 0);
+            pos_X = 570;
+            if (info.position == 0)
+                pos_Y = 170;
+            else if (info.position == 1)
+                pos_Y = -30;
+            else if (info.position == 2)
+                pos_Y = -230;
+            else if (info.position == 3)
+                pos_Y = -430;
+            else if (info.position == 4)
+                pos_Y = -630;
+        }
+        Obj.transform.localPosition = new Vector2(pos_X, pos_Y);
+    }
+
+    //레벨 셋팅
+    private void LevelSeting(int level)
+    {
+        int RandomNum = Random.Range(1, 101);
+        if (level == 1)
+        {
+            if (RandomNum <= 50)
+                lazer_Num = 1;
+            else if (RandomNum <= 80)
+                lazer_Num = 2;
+            else if (RandomNum <= 100)
+                lazer_Num = 3;
+
+            min_Range = 1.4f;
+            max_Range = 1.8f;
+        }
+
+        else if (level == 2)
+        {
+            if (RandomNum <= 70)
+                lazer_Num = 2;
+            else if (RandomNum <= 100)
+                lazer_Num = 3;
+
+            min_Range = 1.4f;
+            max_Range = 1.7f;
+        }
+
+        else if (level == 3)
+        {
+            if (RandomNum <= 50)
+                lazer_Num = 2;
+            else if (RandomNum <= 100)
+                lazer_Num = 3;
+
+            min_Range = 1.3f;
+            max_Range = 1.6f;
+        }
+
+        else if (level == 4)
+        {
+            if (RandomNum <= 30)
+                lazer_Num = 2;
+            else if (RandomNum <= 90)
+                lazer_Num = 3;
+            else if (RandomNum <= 100)
+                lazer_Num = 4;
+
+            min_Range = 1.3f;
+            max_Range = 1.5f;
+        }
+
+        else if (level == 5)
+        {
+            if (RandomNum <= 20)
+                lazer_Num = 2;
+            else if (RandomNum <= 85)
+                lazer_Num = 3;
+            else if (RandomNum <= 100)
+                lazer_Num = 4;
+
+            min_Range = 1.2f;
+            max_Range = 1.4f;
+        }
+
+        else if (level == 6)
+        {
+            if (RandomNum <= 10)
+                lazer_Num = 2;
+            else if (RandomNum <= 75)
+                lazer_Num = 3;
+            else if (RandomNum <= 100)
+                lazer_Num = 4;
+
+            min_Range = 1.2f;
+            max_Range = 1.3f;
+        }
+
+        else if (level == 7)
+        {
+            if (RandomNum <= 5)
+                lazer_Num = 2;
+            else if (RandomNum <= 65)
+                lazer_Num = 3;
+            else if (RandomNum <= 100)
+                lazer_Num = 4;
+
+            min_Range = 1.2f;
+            max_Range = 1.2f;
+        }
+
+        else if (level == 8)
+        {
+            if (RandomNum <= 45)
+                lazer_Num = 3;
+            else if (RandomNum <= 100)
+                lazer_Num = 4;
+            min_Range = 1.2f;
+            max_Range = 1.2f;
+        }
+
+    }
+
+    //레이저 사운드 
+    IEnumerator Make_Laser_Sound()
+    {
+        yield return new WaitForSeconds(1f);
+        if (this.GetComponent<InGameMgr>().isGameStart)
+            transform.GetChild(0).GetComponent<AudioSource>().Play();
+    }
+}
